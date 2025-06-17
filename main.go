@@ -57,21 +57,25 @@ func main() {
 		if item, ok := content[0].(gmb_bot.ContentAt); ok && item.Uid == uid {
 			jsCtx := rt.NewContext()
 			polyfill.InjectAll(jsCtx)
-
+			output := ""
+			jsCtx.Globals().Set("push", jsCtx.Function(func(context *quickjs.Context, value quickjs.Value, values []quickjs.Value) quickjs.Value {
+				output = values[0].String()
+				return jsCtx.Undefined()
+			}))
 			defer jsCtx.Close()
-			s := content[1].String()
-			ret, err := jsCtx.Eval(s)
+			script := content[1].String()
+			ret, err := jsCtx.Eval(script)
 			if err != nil {
 				log.Printf("err %v", err)
 			}
 			defer ret.Free()
-			result := ret.String()
 			jsCtx.Loop()
-			log.Printf(" %s\n%s\n%s", s, id, result)
-			re := make(gmb_bot.Contents, 0)
-			re = append(re, gmb_bot.ContentText{Text: result})
-			//_, err = gmb.NewClientBus(id, bot.ClientCall).SendMessage(&message, &re)
-			println(err)
+			if output != "" {
+				re := make(gmb_bot.Contents, 0)
+				re = append(re, gmb_bot.ContentText{Text: output})
+				_, err = gmb.NewClientBus(id, bot.ClientCall).SendMessage(&message, &re)
+			}
+
 		}
 	})
 	err = bot.Run(ctx)
